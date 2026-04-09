@@ -1,5 +1,4 @@
 import type { BountyInfo } from './types'
-
 import Text from './Text'
 import { loadImage } from './utils'
 
@@ -9,6 +8,7 @@ class Bounty extends Text {
   #bellySignImage: HTMLImageElement | null = null
   #bellyImageScale = 1
   #bellyMarginRight = 0
+
   fontScale = 1
   verticalOffset = 0
 
@@ -57,29 +57,55 @@ class Bounty extends Text {
     this.ctx.textAlign = 'center'
     this.ctx.textBaseline = 'top'
 
-    this.ctx.font = `${this.fontWeight} ${this.fontSize * this.fontScale}px ${
-      this.fontFamily
-    }, serif`
-
     const centerX = this.x + this.width / 2
     const bellySignAreaWidth = this.#isNumber
       ? scaledBellySignWidth + this.#bellyMarginRight
       : 0
-    const actualHeight = this.getTextActualHeight(this.formattedText)
-    const verticalCenterOffset =
-      (this.height - actualHeight) / 2 +
-      this.verticalOffset * this.#bellyImageScale
+
+    const maxWidth = (this.width - bellySignAreaWidth) * 0.96
+    const maxHeight = this.height * 0.82
+
+    let fontSize = this.fontSize * this.fontScale
+    let textWidth = 0
+    let textHeight = 0
+
+    for (let i = 0; i < 12; i++) {
+      this.ctx.font = `${this.fontWeight} ${Math.max(
+        1,
+        fontSize
+      )}px ${this.fontFamily}, serif`
+
+      textWidth = this.ctx.measureText(this.formattedText).width
+      textHeight = this.getTextActualHeight(this.formattedText)
+
+      if (textWidth <= maxWidth && textHeight <= maxHeight) {
+        break
+      }
+
+      const widthScale = maxWidth / Math.max(textWidth, 1)
+      const heightScale = maxHeight / Math.max(textHeight, 1)
+      const scale = Math.min(widthScale, heightScale) * 0.98
+
+      fontSize = Math.max(1, fontSize * scale)
+    }
+
+    this.ctx.font = `${this.fontWeight} ${Math.max(
+      1,
+      fontSize
+    )}px ${this.fontFamily}, serif`
+
+    textWidth = Math.min(this.ctx.measureText(this.formattedText).width, maxWidth)
+    textHeight = this.getTextActualHeight(this.formattedText)
 
     const x = centerX + bellySignAreaWidth / 2
-    const y = this.y + verticalCenterOffset
-    const maxWidth = this.width - bellySignAreaWidth
+    const y =
+      this.y +
+      (this.height - textHeight) / 2 +
+      this.verticalOffset * this.#bellyImageScale
 
     if (this.#isNumber) {
-      const textWidth = Math.min(
-        this.ctx.measureText(this.formattedText).width,
-        maxWidth
-      )
       const bellySignX = centerX - bellySignAreaWidth / 2 - textWidth / 2
+
       this.ctx.globalCompositeOperation = 'darken'
       this.ctx.drawImage(
         this.#bellySignImage,
@@ -90,7 +116,11 @@ class Bounty extends Text {
       )
     }
 
-    return { x, y, maxWidth }
+    return {
+      x,
+      y,
+      maxWidth
+    }
   }
 }
 
